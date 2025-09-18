@@ -1,151 +1,133 @@
-# 🎓 Student Management – EF Core Migrations Demo
+# Student Management – Database Schema Migrations
 
-Dette projekt demonstrerer brugen af **Entity Framework Core (EF Core)** med både  
-**change-based migrations** (Code-First) og **state-based migrations** (SQL-scripts).
+## Introduction
 
-Projektet er bygget som en simpel **.NET Console Application**.
+Dette projekt demonstrerer arbejdet med database schema migrationer ved hjælp af to forskellige strategier:
 
----
+1. **EF Code-First (change-based migrations)**  
+   Her anvendes Entity Framework Core (EF) til at oprette og udvikle databasen gennem kodeændringer i C#-modellerne. Når modellerne ændres, genererer EF migrations, som trin for trin opdaterer databasen.
 
-## 🚀 Core Concepts & Setup
+2. **State-based migrations**  
+   Her beskrives den ønskede sluttilstand direkte i SQL-scripts. Ændringer håndteres ved at oprette versionerede SQL-filer (f.eks. `V1__InitialSchema.sql`, `V2__AddMiddleNameToStudent.sql`), der kan køres på databasen for at bringe den i den ønskede tilstand.
 
-### 1. Projektinitialisering
-
-Projektet blev startet med:
-
-```bash
-dotnet new console -n StudentManagement
-```
-
-Herefter blev et Git repository oprettet, og `.gitignore` blev genereret med:
-
-```bash
-dotnet new gitignore
-```
-
-### 2. Data model
-
-Projektet har tre centrale entiteter:
-
-- **Student**
-
-  - Id
-  - FirstName
-  - LastName
-  - Email
-  - EnrollmentDate
-  - DateOfBirth
-  - PhoneNumber
-  - Address
-  - Gender
-
-- **Course**
-
-  - Id
-  - Title
-  - Credits
-
-- **Enrollment**
-  - Id
-  - StudentId
-  - CourseId
-  - Grade
-
-Disse entiteter er defineret i mappen `Models/`.
-
-### 3. DbContext
-
-`StudentContext` er defineret i `Data/StudentContext.cs` og konfigureret til SQLite:
-
-```csharp
-protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-{
-    optionsBuilder.UseSqlite("Data Source=studentmanagement.db");
-}
-```
+Projektet tager udgangspunkt i et simpelt _Student Management System_, der håndterer studerende, kurser, tilmeldinger, undervisere og afdelinger.
 
 ---
 
-## 🔀 Change-based migrations (EF Core Code-First)
+## Git branching strategy
 
-EF Core CLI bruges til at generere migrations, som repræsenterer ændringer i datamodellen.
+For at holde EF Code-First og State-based adskilt, blev der oprettet særskilte branches for hver delopgave:
 
-### Eksempelkommandoer
+- `feat/schema-changes-ef` indeholder EF Code-First migrationerne.
+- `feat/schema-changes-state` og tilhørende feature-branches (fx `feat/schema-changes-state-instructor`) indeholder de SQL-baserede migrationer.
+
+På denne måde er hele arbejdsprocessen dokumenteret i Git-historikken, og det er tydeligt, hvilke ændringer der hører til hvilken strategi.
+
+---
+
+## Schema Changes – EF Code-First
+
+### V1: Initial schema
+
+De første entiteter blev defineret i C#-modeller:
+
+- **Student** (Id, FirstName, LastName, Email, EnrollmentDate)
+- **Course** (Id, Title, Credits)
+- **Enrollment** (Id, StudentId, CourseId, Grade)
+
+Migrations:
 
 ```bash
-dotnet ef migrations add InitialCreate
+dotnet ef migrations add InitialSchema
 dotnet ef database update
 ```
 
-### Oprettede migrationer i dette projekt
+### V2: Add MiddleName
 
-1. **InitialCreate** – Opretter tabellerne `Students`, `Courses`, `Enrollments`
-2. **AddDateOfBirthToStudent** – Tilføjer feltet `DateOfBirth`
-3. **AddPhoneToStudent** – Tilføjer feltet `PhoneNumber`
-4. **AddAddressToStudent** – Tilføjer feltet `Address`
-5. **AddGenderToStudent** – Tilføjer feltet `Gender`
+Tilføjede en `MiddleName`-kolonne til _Student_.  
+Migration: `dotnet ef migrations add AddMiddleNameToStudent`
 
-### Resultat
+### V3: Add Instructor relation
 
-Hver gang en migration blev oprettet og databasen opdateret, blev tabellen `Students` udvidet med nye felter.
+Tilføjede en ny _Instructor_ tabel (Id, FirstName, LastName, Email, HireDate) og en relation til _Course_ via `InstructorId`.
 
-Programmet (`Program.cs`) indsætter automatisk en **teststudent** eller opdaterer en eksisterende student med de nyeste felter.
+### V4: Rename Grade → FinalGrade
 
----
+Kolonnen _Grade_ i _Enrollment_ blev omdøbt til _FinalGrade_.  
+Dette blev håndteret med en migration, der ændrede kolonnenavnet.
 
-## 📜 State-based migrations (SQL-scripts)
+### V5: Add Department relation
 
-Udover change-based migrations kan man generere SQL-scripts, som repræsenterer  
-databasens tilstand mellem to specifikke migrationer.
+Tilføjede en _Department_ tabel (Id, Name, Budget, StartDate).  
+Derudover blev der defineret en relation, så en DepartmentHead altid er en Instructor.
 
-### Hele migrationshistorikken som SQL
+### V6: Modify Course Credits
 
-```bash
-dotnet ef migrations script -o migration.sql
-```
-
-Dette genererer et fuldt script fra **første migration** til den seneste.
-
-### Incrementelt script mellem to migrationer
-
-```bash
-dotnet ef migrations script AddPhoneToStudent AddGenderToStudent -o StudentUpdate.sql
-```
-
-Dette script viser kun ændringen, hvor `Gender` blev tilføjet efter `PhoneNumber`.
+Kolonnen _Credits_ i _Course_ blev ændret fra `INTEGER` til `DECIMAL(5,2)` for at give mere fleksibilitet.
 
 ---
 
-## ✅ Kørselsoutput
+## Schema Changes – State-based
 
-Når programmet køres med `dotnet run`, ser man enten:
+I denne strategi blev der manuelt oprettet SQL-filer under `MigrationsSql/`, én per versionsændring.
 
-- Første gang:
+### V1\_\_InitialSchema.sql
 
-  ```
-  ✅ New information added to database!
-  ```
+Opretter tabellerne _Students_, _Courses_ og _Enrollments_ inkl. primærnøgler og fremmednøgler.
 
-- Efterfølgende kørsel (opdaterer eksisterende student):
-  ```
-  ✅ Existing student updated with phone and address!
-  ```
+### V2\_\_AddMiddleNameToStudent.sql
+
+Tilføjer `MiddleName` til _Students_.
+
+### V3\_\_AddInstructor.sql
+
+Opretter tabellen _Instructor_ og tilføjer relationen til _Courses_.
+
+### V4\_\_RenameGradeToFinalGrade.sql
+
+Ændrer kolonnenavnet i _Enrollments_ fra `Grade` til `FinalGrade`.
+
+### V5\_\_AddDepartment.sql
+
+Opretter tabellen _Department_ og definerer relation til _Instructor_ som DepartmentHead.
+
+### V6\_\_ModifyCourseCredits.sql
+
+Ændrer datatypen for _Credits_ i _Courses_ fra `INTEGER` til `DECIMAL(5,2)`.
 
 ---
 
-## 📚 Erfaring og konklusion
+## Destructive vs. Non-destructive changes
 
-- **Change-based migrations** giver et revisionsspor, hvor man kan se hvornår felter er tilføjet.
-- **State-based migrations** er nyttige til at generere scripts til produktion, f.eks. ved kun at deploye ændringer mellem to specifikke migrationer.
-- Kombinationen af begge tilgange giver fleksibilitet:
-  - Change-based → god til udvikling
-  - State-based → god til deployment
+### Rename Grade → FinalGrade
+
+Her er det valgt at køre en direkte omdøbning af kolonnen.  
+Dette er en **destructive ændring**, da man ikke bevarer en kopi af den gamle kolonne. Fordelen er, at man undgår redundans og holder skemaet simpelt. Ulempen er, at man mister historikken for navngivningen.
+
+### Modify Course Credits
+
+Ændringen fra `INTEGER` til `DECIMAL(5,2)` kan potentielt være **destructive**, fordi eksisterende data kan ændre type og fortolkning. I praksis er det dog non-destructive, så længe værdierne stadig kan repræsenteres i den nye type. Her er det valgt at ændre typen direkte for at undgå at have dobbeltkolonner og migration scripts, der flytter data.
 
 ---
 
-## 🔧 Teknologistak
+## How to run the project
 
-- .NET 9 Console Application
-- Entity Framework Core
-- SQLite database
-- EF Core CLI
+1. Klon repository.
+2. Naviger til `StudentManagement` mappen.
+3. Kør:
+   ```bash
+   dotnet restore
+   dotnet ef database update
+   dotnet run
+   ```
+
+---
+
+## Conclusion
+
+Dette projekt har vist to forskellige måder at håndtere databaseændringer på:
+
+- **EF Code-First (change-based):** godt til inkrementelle ændringer og hurtig udvikling, hvor migrationerne afspejler hvert enkelt trin i udviklingen.
+- **State-based:** godt til at dokumentere og kontrollere den endelige database-struktur, især i større teams og produktion, hvor scripts skal kunne køres præcist og reproducerbart.
+
+Begge tilgange har fordele og ulemper, og i praksis kombineres de ofte i professionelle projekter.
