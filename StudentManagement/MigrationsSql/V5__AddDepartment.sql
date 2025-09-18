@@ -1,0 +1,9 @@
+
+CREATE TABLE Departments (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Name TEXT NOT NULL,
+    Budget DECIMAL(18,2) NOT NULL,
+    StartDate TEXT NOT NULL,
+    DepartmentHeadId INTEGER NOT NULL,
+    FOREIGN KEY (DepartmentHeadId) REFERENCES Instructors(Id) ON DELETE CASCADE
+);
