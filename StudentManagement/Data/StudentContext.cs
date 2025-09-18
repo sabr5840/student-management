@@ -9,6 +9,8 @@ namespace StudentManagement.Data
         public DbSet<Course> Courses { get; set; }
         public DbSet<Enrollment> Enrollments { get; set; }
         public DbSet<Instructor> Instructors { get; set; }
+        public DbSet<Department> Departments { get; set; }
+
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
